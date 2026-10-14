@@ -32,11 +32,15 @@ data "aws_iam_policy_document" "github_assume" {
       values   = ["sts.amazonaws.com"]
     }
 
-    # Seul le dépôt indiqué peut assumer le rôle.
+    # Seuls les pull requests et la branche main du dépôt indiqué peuvent
+    # assumer le rôle (pas les autres branches).
     condition {
-      test     = "StringLike"
+      test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:${var.github_repository}:*"]
+      values = [
+        "repo:${var.github_repository}:pull_request",
+        "repo:${var.github_repository}:ref:refs/heads/main",
+      ]
     }
   }
 }

@@ -7,6 +7,11 @@ data "aws_elb_service_account" "this" {
 
 locals {
   sse_algorithm = var.kms_key_arn == null ? "AES256" : "aws:kms"
+
+  # Le service ELB est partagé par tous les comptes AWS de la région : on limite
+  # l'écriture aux logs de CE compte (chemin <préfixe>/AWSLogs/<compte>/...), pour
+  # qu'un ALB d'un autre compte ne puisse pas déposer ses logs dans ce bucket.
+  elb_log_objects_arn = "${aws_s3_bucket.this.arn}/*AWSLogs/${data.aws_caller_identity.current.account_id}/*"
 }
 
 resource "aws_s3_bucket" "this" {
@@ -139,7 +144,7 @@ data "aws_iam_policy_document" "this" {
     content {
       sid       = "AllowELBLogDeliveryLegacyAccount"
       actions   = ["s3:PutObject"]
-      resources = ["${aws_s3_bucket.this.arn}/*"]
+      resources = [local.elb_log_objects_arn]
 
       principals {
         type        = "AWS"
@@ -154,7 +159,7 @@ data "aws_iam_policy_document" "this" {
     content {
       sid       = "AllowELBLogDeliveryService"
       actions   = ["s3:PutObject"]
-      resources = ["${aws_s3_bucket.this.arn}/*"]
+      resources = [local.elb_log_objects_arn]
 
       principals {
         type        = "Service"

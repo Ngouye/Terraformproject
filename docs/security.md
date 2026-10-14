@@ -56,7 +56,7 @@ et CloudWatch Alarms (publication des alarmes vers le topic SNS chiffré).
 | | `ssmmessages:*` | seulement si ECS Exec est activé (dev) |
 | VPC Flow Logs | écriture de logs | log group des Flow Logs uniquement |
 | RDS monitoring | policy AWS `AmazonRDSEnhancedMonitoringRole` | service `monitoring.rds.amazonaws.com` |
-| CI GitHub (OIDC) | `ReadOnlyAccess` + accès au state | dépôt GitHub précis, audience `sts.amazonaws.com`, sessions d'1 h |
+| CI GitHub (OIDC) | `ReadOnlyAccess` + accès au state | pull requests et branche `main` du dépôt uniquement, audience `sts.amazonaws.com`, sessions d'1 h |
 
 Les rôles assumés par des services AWS ont des conditions **anti confused deputy** (`aws:SourceAccount`, `aws:SourceArn`).
 Les rôles execution et task sont **distincts** : l'application n'hérite pas des droits de l'agent ECS.
@@ -77,6 +77,7 @@ Les rôles execution et task sont **distincts** : l'application n'hérite pas de
 - Le conteneur le reçoit via le bloc `secrets` de la task definition : l'agent ECS le résout au démarrage.
 - L'authentification IAM à la base est activée (`iam_database_authentication_enabled`).
 - Les hooks pre-commit `detect-private-key` et `detect-aws-credentials` bloquent les commits de secrets.
+- En CI, `persist-credentials: false` : le jeton GitHub n'est pas conservé dans `.git/config` après le checkout.
 
 ### Conteneurs et images
 
@@ -99,7 +100,7 @@ Les rôles execution et task sont **distincts** : l'application n'hérite pas de
 | Application (stdout/stderr) | CloudWatch Logs (KMS) | 14 j dev / 365 j prod |
 | VPC Flow Logs (ALL) | CloudWatch Logs (KMS) | idem |
 | PostgreSQL : connexions, déconnexions, DDL, requêtes > 1 s | CloudWatch Logs (KMS) | idem |
-| ALB access logs | S3 logs | idem (lifecycle) |
+| ALB access logs | S3 logs (écriture limitée au chemin `AWSLogs/<compte>/` de ce compte) | idem (lifecycle) |
 | Accès au bucket assets | S3 logs | idem |
 | 11 alarmes CloudWatch | SNS chiffré → e-mail | — |
 

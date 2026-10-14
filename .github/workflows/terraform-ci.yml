@@ -26,6 +26,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: ${{ env.TF_VERSION }}
@@ -47,6 +49,8 @@ jobs:
         working-directory: ${{ matrix.stack }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: ${{ env.TF_VERSION }}
@@ -68,6 +72,8 @@ jobs:
         working-directory: ${{ matrix.suite }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: ${{ env.TF_VERSION }}
@@ -82,6 +88,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - uses: actions/cache@v6
         with:
           path: ~/.tflint.d/plugins
@@ -103,6 +111,8 @@ jobs:
       security-events: write
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - uses: bridgecrewio/checkov-action@v12
         with:
           directory: .
@@ -131,6 +141,8 @@ jobs:
         working-directory: environments/dev
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ vars.AWS_PLAN_ROLE_ARN }}
