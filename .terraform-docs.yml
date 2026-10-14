@@ -1,0 +1,52 @@
+# Génère les tableaux Prérequis / Ressources / Entrées / Sorties du README de
+# chaque module, avec des en-têtes en français.
+# Usage : terraform-docs -c .terraform-docs.yml modules/<nom>   (ou le hook pre-commit)
+formatter: markdown table
+
+content: |-
+  ## Prérequis
+
+  | Nom | Version |
+  |-----|---------|
+  {{- range .Module.Requirements }}
+  | {{ .Name }} | {{ .Version }} |
+  {{- end }}
+
+  ## Ressources
+
+  | Nom | Type |
+  |-----|------|
+  {{- range .Module.Resources }}
+  | [{{ .Spec }}]({{ .URL }}) | {{ if eq .GetMode "data source" }}source de données{{ else }}ressource{{ end }} |
+  {{- end }}
+
+  ## Entrées
+
+  | Nom | Description | Type | Défaut | Requis |
+  |-----|-------------|------|--------|:------:|
+  {{- range .Module.Inputs }}
+  | `{{ .Name }}` | {{ .Description }} | `{{ .Type }}` | {{ if .Required }}—{{ else }}`{{ .GetValue | replace "\n  " "" | replace "\n" "" | replace "," ", " }}`{{ end }} | {{ if .Required }}oui{{ else }}non{{ end }} |
+  {{- end }}
+
+  ## Sorties
+
+  | Nom | Description |
+  |-----|-------------|
+  {{- range .Module.Outputs }}
+  | `{{ .Name }}` | {{ .Description }} |
+  {{- end }}
+
+output:
+  file: README.md
+  mode: inject
+  template: |-
+    <!-- BEGIN_TF_DOCS -->
+    {{ .Content }}
+    <!-- END_TF_DOCS -->
+
+sort:
+  enabled: true
+  by: required
+
+settings:
+  lockfile: false

@@ -1,0 +1,24 @@
+# Configuration Checkov - analyse de sécurité et de conformité du code Terraform.
+# Les exceptions propres à une ressource sont documentées en ligne
+# (#checkov:skip=...) à côté de la ressource. Les exceptions globales ci-dessous
+# sont justifiées une par une.
+framework:
+  - terraform
+download-external-modules: false
+quiet: true
+compact: true
+skip-check:
+  # Rétention des log groups : 14 à 30 jours est un choix de coût assumé hors
+  # production ; la production utilise 365 jours (log_retention_days).
+  - CKV_AWS_338
+  # Réplication S3 inter-régions : projet mono-région.
+  - CKV_AWS_144
+  # Notifications d'événements S3 : inutiles pour l'application.
+  - CKV2_AWS_62
+  # WAF devant l'ALB : prévu dans la roadmap (service payant).
+  - CKV2_AWS_28
+  # Les Security Groups sont attachés via les outputs de modules, que le graphe
+  # de Checkov ne suit pas quand il analyse les modules un par un.
+  - CKV2_AWS_5
+  # Journalisation des sessions ECS Exec avec une CMK : ECS Exec est désactivé en production.
+  - CKV_AWS_224

@@ -1,0 +1,151 @@
+name: CI Terraform
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: terraform-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  TF_VERSION: "1.16.5"
+  TF_IN_AUTOMATION: "true"
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Formatage
+  # ---------------------------------------------------------------------------
+  fmt:
+    name: terraform fmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+      - run: terraform fmt -recursive -check -diff
+
+  # ---------------------------------------------------------------------------
+  # Vérification de la syntaxe et des types de chaque module racine
+  # (aucun identifiant AWS nécessaire)
+  # ---------------------------------------------------------------------------
+  validate:
+    name: terraform validate (${{ matrix.stack }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        stack: [bootstrap, environments/dev, environments/prod]
+    defaults:
+      run:
+        working-directory: ${{ matrix.stack }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+      - run: terraform init -backend=false -input=false
+      - run: terraform validate
+
+  # ---------------------------------------------------------------------------
+  # Tests unitaires avec un provider AWS simulé (terraform test)
+  # ---------------------------------------------------------------------------
+  test:
+    name: terraform test (${{ matrix.suite }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [modules/vpc, modules/security-groups, environments/dev, environments/prod]
+    defaults:
+      run:
+        working-directory: ${{ matrix.suite }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+      - run: terraform init -backend=false -input=false
+      - run: terraform test
+
+  # ---------------------------------------------------------------------------
+  # Lint (bonnes pratiques, types d'instance invalides, nommage...)
+  # ---------------------------------------------------------------------------
+  tflint:
+    name: tflint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/cache@v6
+        with:
+          path: ~/.tflint.d/plugins
+          key: tflint-${{ hashFiles('.tflint.hcl') }}
+      - uses: terraform-linters/setup-tflint@v6
+      - run: tflint --init --config "$GITHUB_WORKSPACE/.tflint.hcl"
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+      - run: tflint --recursive --config "$GITHUB_WORKSPACE/.tflint.hcl" --format compact
+
+  # ---------------------------------------------------------------------------
+  # Analyse de sécurité (chiffrement, IAM, exposition réseau...)
+  # ---------------------------------------------------------------------------
+  checkov:
+    name: checkov
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: .
+          config_file: .checkov.yaml
+          output_format: cli,sarif
+          output_file_path: console,results.sarif
+      - uses: github/codeql-action/upload-sarif@v4
+        if: always() && hashFiles('results.sarif') != ''
+        with:
+          sarif_file: results.sarif
+
+  # ---------------------------------------------------------------------------
+  # Plan sur le vrai environnement dev (rôle OIDC en lecture seule, aucune clé
+  # stockée). Activé dès que la variable de dépôt AWS_PLAN_ROLE_ARN est définie.
+  # ---------------------------------------------------------------------------
+  plan-dev:
+    name: terraform plan (dev)
+    if: vars.AWS_PLAN_ROLE_ARN != ''
+    needs: [fmt, validate, test, tflint, checkov]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    defaults:
+      run:
+        working-directory: environments/dev
+    steps:
+      - uses: actions/checkout@v7
+      - uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_PLAN_ROLE_ARN }}
+          aws-region: eu-west-3
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+      - run: terraform init -input=false -backend-config=backend.hcl
+      - run: terraform plan -input=false -no-color -lock-timeout=5m -out=tfplan
+      - name: Publier le résumé du plan
+        run: |
+          {
+            echo '## Plan Terraform - dev'
+            echo '```hcl'
+            terraform show -no-color tfplan | tail -c 60000
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

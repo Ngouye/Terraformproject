@@ -1,0 +1,37 @@
+# Répertoires de travail et plans Terraform
+**/.terraform/*
+*.tfplan
+*.tfplan.json
+tfplan
+crash.log
+crash.*.log
+
+# Les fichiers de state ne doivent jamais être commités (le state distant est dans S3).
+# Seule exception : bootstrap/terraform.tfstate avant migration (à garder en local, sans le commiter).
+*.tfstate
+*.tfstate.*
+
+# Surcharges locales et secrets
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+*.auto.tfvars
+secret.tfvars
+.terraformrc
+terraform.rc
+
+# Outillage
+.tflint.d/
+.checkov/
+.infracost/
+
+# Système et éditeurs
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Les lock files ne sont commités que pour les modules racines (bootstrap, environments)
+modules/**/.terraform.lock.hcl

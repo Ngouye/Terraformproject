@@ -1,0 +1,2 @@
+# Fins de ligne Unix (LF) pour tous les fichiers texte, quel que soit le système.
+* text=auto eol=lf
