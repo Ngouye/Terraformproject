@@ -123,6 +123,7 @@ Plus de détails : [docs/architecture.md](docs/architecture.md).
 ├── docs/
 │   ├── architecture.md
 │   └── security.md
+├── scripts/                    # Déploiement Windows : deploy.ps1, destroy.ps1, push-image.ps1
 ├── .github/workflows/terraform-ci.yml
 ├── .checkov.yaml  .tflint.hcl  .pre-commit-config.yaml
 └── Makefile
@@ -176,6 +177,14 @@ Le compte AWS utilisé doit disposer de droits d'administration pour le premier 
 ---
 
 ## Déploiement pas à pas
+
+> **Sous Windows**, les étapes 1 à 3 sont automatisées par `scripts\deploy.ps1` (une confirmation est demandée avant chaque création),
+> et `scripts\destroy.ps1` supprime l'environnement. Les scripts n'installent rien : Terraform et l'AWS CLI doivent être présents.
+>
+> ```powershell
+> powershell -ExecutionPolicy Bypass -File .\scripts\deploy.ps1     # dev
+> powershell -ExecutionPolicy Bypass -File .\scripts\destroy.ps1    # tout supprimer
+> ```
 
 ### 1. Créer le backend distant (une seule fois)
 

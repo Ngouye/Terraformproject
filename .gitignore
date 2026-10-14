@@ -35,3 +35,6 @@ Thumbs.db
 
 # Les lock files ne sont commités que pour les modules racines (bootstrap, environments)
 modules/**/.terraform.lock.hcl
+
+# Guide personnel, conservé en local uniquement
+docs/guide-complet.md
